@@ -73,7 +73,7 @@ USAGE:
    registry-bench [global options] command [command options] [arguments...]
 
 VERSION:
-   1.0.0
+   1.1.21e7692
 
 COMMANDS:
      help, h  Shows a list of commands or help for one command
@@ -104,6 +104,8 @@ GLOBAL OPTIONS:
    --size.step value              increase image size each step (in MB) (default: 10) [$STEP_SIZE]
    --step.count value             test step count (default: 5) [$STEP_COUNT]
    --pull.count value             pull count in each step, if test with cdn/cache, you may set more than 1 (default: 1) [$PULL_COUNT]
+   --debug                        debug mode [$DEBUG]
+   --randomtag                    append random tag [$RANDOMTAG]
    --help, -h                     show help
    --version, -v                  print the version
 ```

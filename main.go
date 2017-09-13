@@ -15,7 +15,7 @@ func main() {
 	app.Name = "registry bench"
 	app.Usage = "registry bench"
 	app.Action = run
-	app.Version = fmt.Sprintf("1.0.%s", build)
+	app.Version = fmt.Sprintf("1.1.%s", build)
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:   "daemon.mirror",
@@ -149,6 +149,16 @@ func main() {
 			EnvVar: "PULL_COUNT",
 			Value:  1,
 		},
+		cli.BoolFlag{
+			Name:   "debug",
+			Usage:  "debug mode",
+			EnvVar: "DEBUG",
+		},
+		cli.BoolFlag{
+			Name:   "randomtag",
+			Usage:  "append random tag",
+			EnvVar: "RANDOMTAG",
+		},
 	}
 
 	if err := app.Run(os.Args); err != nil {
@@ -201,6 +211,7 @@ func run(c *cli.Context) error {
 			MTU:           c.String("daemon.mtu"),
 			WorkDir:       c.String("daemon.workdir"),
 		},
+		Debug: c.Bool("debug"),
 	}
 
 	count := c.Int("step.count")

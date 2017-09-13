@@ -3,12 +3,17 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 type (
 	// Daemon defines Docker daemon parameters.
@@ -47,9 +52,11 @@ type (
 
 	// Docker defines the Docker plugin parameters.
 	Docker struct {
-		Login  Login  // Docker login configuration
-		Build  Build  // Docker build configuration
-		Daemon Daemon // Docker daemon configuration
+		Login     Login  // Docker login configuration
+		Build     Build  // Docker build configuration
+		Daemon    Daemon // Docker daemon configuration
+		Debug     bool
+		RandomTag bool
 	}
 
 	// TestCase ...
@@ -79,7 +86,7 @@ func (p *Docker) Exec(testcase *TestCase) error {
 		}
 
 		go func() {
-			trace(cmd)
+			trace(cmd, p.Debug)
 			cmd.Run()
 		}()
 
@@ -103,7 +110,7 @@ func (p *Docker) Exec(testcase *TestCase) error {
 	} else {
 		if p.Login.Password != "" {
 			cmd := commandLogin(p.Login)
-			trace(cmd)
+			trace(cmd, p.Debug)
 			var err error
 			for i := 0; i < 5; i++ {
 				err = cmd.Run()
@@ -125,7 +132,9 @@ func (p *Docker) Exec(testcase *TestCase) error {
 		version := commandVersion() // docker version
 		info := commandInfo()       // docker info
 
+		trace(version, p.Debug)
 		version.Run()
+		trace(info, p.Debug)
 		info.Run()
 	}
 
@@ -138,7 +147,7 @@ func (p *Docker) Exec(testcase *TestCase) error {
 
 	// 3. prepare
 	dd := commandDD(testcase.FileSize)
-	trace(dd)
+	trace(dd, p.Debug)
 	err := dd.Run()
 	if err != nil {
 		return err
@@ -147,9 +156,12 @@ func (p *Docker) Exec(testcase *TestCase) error {
 	// 4. build
 	start = time.Now()
 	target := fmt.Sprintf("%s/%s", p.Daemon.Registry, p.Build.Repo)
+	if p.RandomTag {
+		target = target + randStringRunes(10)
+	}
 	p.Build.Name = target
 	build := commandBuild(p.Build)
-	trace(build)
+	trace(build, p.Debug)
 	err = build.Run()
 	if err != nil {
 		return err
@@ -169,7 +181,7 @@ func (p *Docker) Exec(testcase *TestCase) error {
 	// 6. push
 	start = time.Now()
 	push := commandPush(target)
-	trace(push)
+	trace(push, p.Debug)
 	err = push.Run()
 	if err != nil {
 		return err
@@ -182,13 +194,13 @@ func (p *Docker) Exec(testcase *TestCase) error {
 	for i := 0; i < testcase.PullCount; i++ {
 		thisstart := time.Now()
 		rm := commandRm(target)
-		trace(rm)
+		trace(rm, p.Debug)
 		err = rm.Run()
 		if err != nil {
 			return err
 		}
 		pull := commandPull(target)
-		trace(pull)
+		trace(pull, p.Debug)
 		err = pull.Run()
 		if err != nil {
 			return err
@@ -316,6 +328,20 @@ func commandDaemon(daemon Daemon) *exec.Cmd {
 
 // trace writes each command to stdout with the command wrapped in an xml
 // tag so that it can be extracted and displayed in the logs.
-func trace(cmd *exec.Cmd) {
+func trace(cmd *exec.Cmd, debug bool) {
 	fmt.Fprintf(os.Stdout, "+ %s\n", strings.Join(cmd.Args, " "))
+	if debug {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func randStringRunes(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }
