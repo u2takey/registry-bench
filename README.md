@@ -11,10 +11,12 @@ registry io bench test
 ## Run 
 make build 
 docker run --rm  \
-  -e DOCKER_REPO=wanglei/justtest1:v1 \
-  -e DOCKER_REGISTRY=index.qiniu.com \
-  -e DOCKER_USERNAME=uz00cvETZ8CMZnq3w68nCo2_apLGHQvtFaNrEDWO \
-  -e DOCKER_PASSWORD=1fbyuvmZCWKP4a0-BDL01oUn9mKLk_j5JeFKpayR \
+  -e DOCKER_REPO=u-1380937530-default/justtest1:v1 \
+  -e DOCKER_REGISTRY=reg.qiniu.com \
+  -e DOCKER_USERNAME=xx \
+  -e DOCKER_PASSWORD=xx \
+  -e STEP_SIZE=5 \
+  -e PULL_COUNT=3 \
   --privileged \
   registry-bench
 
@@ -98,9 +100,10 @@ GLOBAL OPTIONS:
    --docker.email value           docker email [$DOCKER_EMAIL]
    --env-file value               source env file
    --httpproxy value              httpproxy [$HTTPPROXY]
-   --size.start value             start size (default: 10) [$START_SIZE]
-   --size.step value              start size (default: 10) [$STEP_SIZE]
-   --step.count value             step count (default: 5) [$STEP_COUNT]
+   --size.start value             starting image size (in MB) (default: 10) [$START_SIZE]
+   --size.step value              increase image size each step (in MB) (default: 10) [$STEP_SIZE]
+   --step.count value             test step count (default: 5) [$STEP_COUNT]
+   --pull.count value             pull count in each step, if test with cdn/cache, you may set more than 1 (default: 1) [$PULL_COUNT]
    --help, -h                     show help
    --version, -v                  print the version
 ```

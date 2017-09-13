@@ -55,9 +55,11 @@ type (
 	// TestCase ...
 	TestCase struct {
 		FileSize    int
+		PullCount   int
 		Preparecost time.Duration
 		Pullcost    time.Duration
 		Pushcost    time.Duration
+		Pushcost2   time.Duration
 	}
 )
 
@@ -175,19 +177,25 @@ func (p *Docker) Exec(testcase *TestCase) error {
 	testcase.Pushcost = time.Now().Sub(start)
 
 	// 7. rm & pull
-	rm := commandRm(target)
-	trace(rm)
-	err = rm.Run()
-	if err != nil {
-		return err
-	}
 	start = time.Now()
-	pull := commandPull(target)
-	trace(pull)
-	err = pull.Run()
-	if err != nil {
-		return err
+
+	for i := 0; i < testcase.PullCount; i++ {
+		thisstart := time.Now()
+		rm := commandRm(target)
+		trace(rm)
+		err = rm.Run()
+		if err != nil {
+			return err
+		}
+		pull := commandPull(target)
+		trace(pull)
+		err = pull.Run()
+		if err != nil {
+			return err
+		}
+		fmt.Printf("pull %d, cost %v\n", i, time.Now().Sub(thisstart))
 	}
+
 	testcase.Pullcost = time.Now().Sub(start)
 
 	return nil

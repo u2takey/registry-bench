@@ -127,21 +127,27 @@ func main() {
 		},
 		cli.IntFlag{
 			Name:   "size.start",
-			Usage:  "start size",
+			Usage:  "starting image size (in MB)",
 			EnvVar: "START_SIZE",
 			Value:  10,
 		},
 		cli.IntFlag{
 			Name:   "size.step",
-			Usage:  "start size",
+			Usage:  "increase image size each step (in MB)",
 			EnvVar: "STEP_SIZE",
 			Value:  10,
 		},
 		cli.IntFlag{
 			Name:   "step.count",
-			Usage:  "step count",
+			Usage:  "test step count",
 			EnvVar: "STEP_COUNT",
 			Value:  5,
+		},
+		cli.IntFlag{
+			Name:   "pull.count",
+			Usage:  "pull count in each step, if test with cdn/cache, you may set more than 1",
+			EnvVar: "PULL_COUNT",
+			Value:  1,
 		},
 	}
 
@@ -200,11 +206,12 @@ func run(c *cli.Context) error {
 	count := c.Int("step.count")
 	sizestart := c.Int("size.start")
 	sizestep := c.Int("size.step")
+	pullcount := c.Int("pull.count")
 
 	result := []*TestCase{}
 	for i := 0; i < count; i++ {
 		size := sizestart + i*sizestep
-		t := &TestCase{FileSize: size}
+		t := &TestCase{FileSize: size, PullCount: pullcount}
 
 		err := docker.Exec(t)
 		if err != nil {
@@ -214,8 +221,8 @@ func run(c *cli.Context) error {
 
 		result = append(result, t)
 
-		fmt.Printf("case %d done, size %d M, prepare-cost : %f S, pull-cost : %f S, push-cost : %f S\n",
-			i, t.FileSize, t.Preparecost.Seconds(), t.Pullcost.Seconds(), t.Pushcost.Seconds())
+		fmt.Printf("case %d done, size %d M, prepare-cost : %f S, pull-cost : %f S [%d pull], push-cost : %f S\n",
+			i, t.FileSize, t.Preparecost.Seconds(), t.Pullcost.Seconds(), pullcount, t.Pushcost.Seconds())
 
 	}
 	fmt.Println("---------------------------------------------------------------------------------")
@@ -223,8 +230,8 @@ func run(c *cli.Context) error {
 
 	for index, t := range result {
 
-		fmt.Printf("case %d, size %d M, prepare-cost : %f S, pull-cost : %f S, push-cost : %f S\n",
-			index, t.FileSize, t.Preparecost.Seconds(), t.Pullcost.Seconds(), t.Pushcost.Seconds())
+		fmt.Printf("case %d, size %d M, prepare-cost : %f S, pull-cost : %f S [%d pull], push-cost : %f S\n",
+			index, t.FileSize, t.Preparecost.Seconds(), t.Pullcost.Seconds(), pullcount, t.Pushcost.Seconds())
 		pullcost += t.Pullcost.Seconds()
 		if index == 0 {
 			pullsize += 0
@@ -236,7 +243,7 @@ func run(c *cli.Context) error {
 	}
 	fmt.Println("---------------------------------------------------------------------------------")
 	fmt.Printf("Summary: pull speed %f M/S, push speed %f M/S",
-		pullsize/pullcost, pushsize/pushcost)
+		pullsize*float64(pullcount)/pullcost, pushsize/pushcost)
 
 	return nil
 }
