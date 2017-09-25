@@ -15,7 +15,7 @@ func main() {
 	app.Name = "registry bench"
 	app.Usage = "registry bench"
 	app.Action = run
-	app.Version = fmt.Sprintf("1.1.%s", build)
+	app.Version = fmt.Sprintf("1.2.%s", build)
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:   "daemon.mirror",
@@ -159,6 +159,11 @@ func main() {
 			Usage:  "append random tag",
 			EnvVar: "RANDOMTAG",
 		},
+		cli.BoolFlag{
+			Name:   "test-mirror",
+			Usage:  "test mirror will ignore size related params, and always use repo for pull",
+			EnvVar: "TEST-MIRROR",
+		},
 	}
 
 	if err := app.Run(os.Args); err != nil {
@@ -211,7 +216,8 @@ func run(c *cli.Context) error {
 			MTU:           c.String("daemon.mtu"),
 			WorkDir:       c.String("daemon.workdir"),
 		},
-		Debug: c.Bool("debug"),
+		Debug:     c.Bool("debug"),
+		RandomTag: c.Bool("randomtag"),
 	}
 
 	count := c.Int("step.count")
@@ -219,12 +225,17 @@ func run(c *cli.Context) error {
 	sizestep := c.Int("size.step")
 	pullcount := c.Int("pull.count")
 
+	runfunc := docker.Exec
+	if c.Bool("test-mirror") {
+		runfunc = docker.ExecMirror
+	}
+
 	result := []*TestCase{}
 	for i := 0; i < count; i++ {
 		size := sizestart + i*sizestep
 		t := &TestCase{FileSize: size, PullCount: pullcount}
 
-		err := docker.Exec(t)
+		err := runfunc(t)
 		if err != nil {
 			fmt.Println("error ", err)
 			return err

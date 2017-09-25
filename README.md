@@ -1,6 +1,8 @@
 # reigstry-bench
-registry io bench test
-[docker hub link](https://hub.docker.com/r/u2takey/registry-bench/)
+> [docker hub link](https://hub.docker.com/r/u2takey/registry-bench/)
+
+registry io bench test, support registry / mirror speed test. Various test form supported.
+
 
 ## How We Test Registry IO Speed
 - generate random file
@@ -66,14 +68,8 @@ Summary: pull speed 1.759840 M/S, push speed 1.558803 M/S%
 ## Other Params
 
 ```
-NAME:
-   registry bench - registry bench
-
-USAGE:
-   registry-bench [global options] command [command options] [arguments...]
-
 VERSION:
-   1.1.21e7692
+   1.2.ac01bdc
 
 COMMANDS:
      help, h  Shows a list of commands or help for one command
@@ -106,6 +102,7 @@ GLOBAL OPTIONS:
    --pull.count value             pull count in each step, if test with cdn/cache, you may set more than 1 (default: 1) [$PULL_COUNT]
    --debug                        debug mode [$DEBUG]
    --randomtag                    append random tag [$RANDOMTAG]
+   --test-mirror                  test mirror will ignore size related params, and always use repo for pull [$TEST-MIRROR]
    --help, -h                     show help
    --version, -v                  print the version
 ```

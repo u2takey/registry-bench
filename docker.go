@@ -66,7 +66,6 @@ type (
 		Preparecost time.Duration
 		Pullcost    time.Duration
 		Pushcost    time.Duration
-		Pushcost2   time.Duration
 	}
 )
 
@@ -156,6 +155,9 @@ func (p *Docker) Exec(testcase *TestCase) error {
 	// 4. build
 	start = time.Now()
 	target := fmt.Sprintf("%s/%s", p.Daemon.Registry, p.Build.Repo)
+	if len(p.Daemon.Registry) == 0 {
+		target = p.Build.Repo
+	}
 	if p.RandomTag {
 		target = target + randStringRunes(10)
 	}
@@ -209,6 +211,115 @@ func (p *Docker) Exec(testcase *TestCase) error {
 	}
 
 	testcase.Pullcost = time.Now().Sub(start)
+
+	return nil
+}
+
+// ExecMirror executes the mirror test
+func (p *Docker) ExecMirror(testcase *TestCase) error {
+	start := time.Now()
+
+	// 1. start daemon
+	if !p.Daemon.Running {
+		cmd := commandDaemon(p.Daemon)
+		if p.Daemon.Debug {
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+		} else {
+			cmd.Stdout = ioutil.Discard
+			cmd.Stderr = ioutil.Discard
+		}
+
+		go func() {
+			trace(cmd, p.Debug)
+			cmd.Run()
+		}()
+
+		// poll the docker daemon until it is started. This ensures the daemon is
+		// ready to accept connections before we proceed.
+		for i := 0; i < 15; i++ {
+			cmd := commandInfo()
+			err := cmd.Run()
+			if err == nil {
+				p.Daemon.Running = true
+				break
+			}
+			time.Sleep(time.Second * 1)
+		}
+	}
+
+	start = time.Now()
+
+	// 2. login to the Docker registry
+	if p.Daemon.Login {
+	} else {
+		if p.Login.Password != "" {
+			cmd := commandLogin(p.Login)
+			trace(cmd, p.Debug)
+			var err error
+			for i := 0; i < 5; i++ {
+				err = cmd.Run()
+				if err == nil {
+					break
+				} else {
+					time.Sleep(time.Duration(i+1) * time.Second)
+				}
+			}
+			if err != nil {
+				return fmt.Errorf("Error authenticating %s", err)
+			}
+		} else {
+			fmt.Println("Registry credentials not provided. Guest mode enabled.")
+		}
+		fmt.Println("Registry Login Cost", time.Now().Sub(start))
+		p.Daemon.Login = true
+
+		version := commandVersion() // docker version
+		info := commandInfo()       // docker info
+
+		trace(version, p.Debug)
+		version.Run()
+		trace(info, p.Debug)
+		info.Run()
+	}
+
+	if p.Daemon.WorkDir != "" {
+		err := os.Chdir(p.Daemon.WorkDir)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+
+	// 3. prepare
+
+	var err error
+
+	start = time.Now()
+	target := fmt.Sprintf("%s/%s", p.Daemon.Registry, p.Build.Repo)
+	if len(p.Daemon.Registry) == 0 {
+		target = p.Build.Repo
+	}
+	for i := 0; i < testcase.PullCount; i++ {
+		thisstart := time.Now()
+
+		pull := commandPull(target)
+		trace(pull, p.Debug)
+		err = pull.Run()
+		if err != nil {
+			return err
+		}
+
+		rm := commandRm(target)
+		trace(rm, p.Debug)
+		err = rm.Run()
+		if err != nil {
+			return err
+		}
+		fmt.Printf("pull %d, cost %v\n", i, time.Now().Sub(thisstart))
+	}
+
+	testcase.Pullcost = time.Now().Sub(start)
+	testcase.Pushcost = time.Hour * 999999
 
 	return nil
 }
